@@ -58,6 +58,48 @@ polyquant/
 └── data/                        # Local data directory
 ```
 
+## Target Market & Prediction Mapping
+
+**Target Market Type**: Polymarket daily BTC/ETH price threshold markets, e.g., "Will BTC be above $X on [date]?"
+
+**Prediction Horizon**: 24 hours (default). The model predicts P(price > current_threshold) over the next 24h.
+
+**Market-to-Prediction Mapping**:
+1. Discover active BTC/ETH threshold markets via Gamma API (filter by slug/keyword)
+2. Extract the target price threshold from market metadata (e.g., "$70,000")
+3. Model predicts P(BTC > $70,000 in 24h) using current price + technical features
+4. Compare model probability against YES token market price
+5. Only trade markets expiring within the model's prediction horizon (≤24h)
+
+**Position Lifecycle**:
+- **Entry**: Place limit order when signal threshold is met
+- **Hold**: Hold through expiry by default (prediction markets resolve automatically)
+- **Early Exit**: Optional — sell position before expiry if model flips signal or edge disappears
+- **Resolution**: Positions resolve at market expiry. YES token pays $1 if condition met, $0 otherwise
+- **Backtesting**: Simulate resolution by checking actual BTC/ETH price at market expiry time
+
+## Historical Data Bootstrap
+
+Polymarket does not provide historical price snapshots via API. To bootstrap backtesting:
+
+1. **Phase 0 (Data Collection)**: Run a data collector for 2-4 weeks to accumulate Polymarket price snapshots before backtesting
+2. **Interim Backtesting**: Initially backtest the model component alone — evaluate prediction accuracy against actual price movements without the market comparison layer
+3. **Full Backtesting**: Once sufficient Polymarket snapshots are collected, run full pipeline backtest including the signal layer
+
+## Execution Loop & Scheduling
+
+**Mechanism**: Long-running Python process using `asyncio` with periodic scheduling (via `asyncio.sleep` loop).
+
+**Loop cadence**:
+- Data fetch: every 15 minutes (align with Polymarket price update frequency)
+- Model inference + signal check: after each data fetch
+- Order management: check open orders and positions every 5 minutes
+
+**State Persistence & Recovery**:
+- Open positions and pending orders persisted to SQLite `positions` table
+- On startup: reconcile local state against Polymarket API (check filled orders, resolved markets)
+- Crash recovery: compare stored state with exchange state, log discrepancies, require manual confirmation for large mismatches
+
 ## Component Details
 
 ### Data Layer
@@ -90,7 +132,7 @@ polyquant/
 
 **Prediction Model** (`model/predictor.py`):
 - Algorithm: LightGBM (gradient boosting)
-- Target: binary classification — price up (1) vs down (0) over next N hours
+- Target: binary classification — price above threshold (1) vs below (0) in 24 hours
 - Output: probability value (0.0 ~ 1.0)
 - Training: rolling window to prevent look-ahead bias
 - Evaluation metrics: AUC-ROC, Brier Score, log loss
