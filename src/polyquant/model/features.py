@@ -1,8 +1,12 @@
 """Technical indicator feature engineering from OHLCV data."""
 
+import logging
+
 import numpy as np
 import pandas as pd
 import ta
+
+logger = logging.getLogger(__name__)
 
 
 def compute_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -15,6 +19,7 @@ def compute_features(df: pd.DataFrame) -> pd.DataFrame:
         DataFrame with feature columns, NaN warmup rows dropped.
     """
     out = df.copy()
+    logger.info("Computing features from %d input rows", len(df))
 
     # Trend
     out["sma_7"] = ta.trend.sma_indicator(out["close"], window=7)
@@ -53,6 +58,8 @@ def compute_features(df: pd.DataFrame) -> pd.DataFrame:
     out["hist_vol_24"] = out["return_1h"].rolling(24).std()
 
     # Drop warmup rows (99 needed for SMA_99)
+    rows_before = len(out)
     out = out.dropna().reset_index(drop=True)
+    logger.info("Dropped %d warmup rows, %d rows remaining", rows_before - len(out), len(out))
 
     return out

@@ -1,6 +1,9 @@
 """Signal generation: compare model probability vs Polymarket price."""
 
+import logging
 from enum import Enum
+
+logger = logging.getLogger(__name__)
 
 
 class Signal(Enum):

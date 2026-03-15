@@ -4,7 +4,11 @@ This module is Phase 3 — implement after backtesting and paper trading
 are validated. Currently a stub defining the interface.
 """
 
+import logging
+
 from polyquant.strategy.signal import Signal
+
+logger = logging.getLogger(__name__)
 
 
 class LiveTrader:

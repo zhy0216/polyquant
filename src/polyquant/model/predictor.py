@@ -1,11 +1,14 @@
 """LightGBM probability predictor for price threshold prediction."""
 
+import logging
 from pathlib import Path
 
 import joblib
 import lightgbm as lgb
 import numpy as np
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 
 class Predictor:
@@ -25,14 +28,18 @@ class Predictor:
 
     def train(self, X: pd.DataFrame, y: pd.Series | np.ndarray) -> None:
         """Train the model on features X and binary labels y."""
+        logger.info("Training model on %d samples with %d features", len(X), X.shape[1])
         self.model = lgb.LGBMClassifier(**self.params)
         self.model.fit(X, y)
+        logger.info("Training complete")
 
     def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
         """Return probability of positive class (price above threshold)."""
         if self.model is None:
             raise RuntimeError("Model not trained. Call train() first.")
-        return self.model.predict_proba(X)[:, 1]
+        probs = self.model.predict_proba(X)[:, 1]
+        logger.debug("Generated %d predictions", len(probs))
+        return probs
 
     def feature_importance(self) -> dict[str, float]:
         """Return feature name -> importance mapping."""

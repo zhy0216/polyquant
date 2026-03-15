@@ -1,9 +1,12 @@
 """SQLite data storage for OHLCV and Polymarket price snapshots."""
 
+import logging
 import sqlite3
 from pathlib import Path
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 
 class DataStore:
@@ -18,6 +21,7 @@ class DataStore:
         return sqlite3.connect(self.db_path)
 
     def _init_tables(self) -> None:
+        logger.info("Initializing database tables at %s", self.db_path)
         with self._get_conn() as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS ohlcv (
@@ -60,6 +64,7 @@ class DataStore:
 
     def save_ohlcv(self, symbol: str, timeframe: str, df: pd.DataFrame) -> None:
         """Save OHLCV data, upserting on (symbol, timeframe, timestamp)."""
+        logger.info("Saving %d OHLCV rows for %s/%s", len(df), symbol, timeframe)
         with self._get_conn() as conn:
             for _, row in df.iterrows():
                 conn.execute(
@@ -79,10 +84,12 @@ class DataStore:
             )
         if not df.empty:
             df["timestamp"] = pd.to_datetime(df["timestamp"])
+        logger.info("Loaded %d OHLCV rows for %s/%s", len(df), symbol, timeframe)
         return df
 
     def save_polymarket_prices(self, df: pd.DataFrame) -> None:
         """Save Polymarket price snapshots."""
+        logger.info("Saving %d Polymarket price snapshots", len(df))
         with self._get_conn() as conn:
             for _, row in df.iterrows():
                 conn.execute(

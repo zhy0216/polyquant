@@ -1,6 +1,7 @@
 """CLI entry points for data collection, backtesting, and paper trading."""
 
 import argparse
+import logging
 import sys
 
 import pandas as pd
@@ -10,11 +11,14 @@ from polyquant.data.binance import BinanceFetcher
 from polyquant.data.polymarket import PolymarketFetcher
 from polyquant.data.store import DataStore
 from polyquant.execution.backtest import run_model_backtest
+from polyquant.logging_config import setup_logging
 from polyquant.model.features import compute_features
 from polyquant.model.predictor import Predictor
 from polyquant.strategy.signal import generate_signal
 from polyquant.strategy.sizing import kelly_size
 from polyquant.execution.paper import PaperTrader
+
+logger = logging.getLogger(__name__)
 
 
 def collect_data(settings: Settings) -> None:
@@ -143,7 +147,10 @@ def main() -> None:
                         help="Command to run")
     args = parser.parse_args()
 
+    setup_logging()
+
     settings = Settings()
+    logger.info("Starting command: %s", args.command)
 
     if args.command == "collect":
         collect_data(settings)
@@ -151,6 +158,8 @@ def main() -> None:
         backtest(settings)
     elif args.command == "paper":
         paper_trade(settings)
+
+    logger.info("Command %s finished", args.command)
 
 
 if __name__ == "__main__":

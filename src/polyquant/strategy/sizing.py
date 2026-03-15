@@ -1,5 +1,9 @@
 """Kelly criterion position sizing."""
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def kelly_size(
     prob: float,

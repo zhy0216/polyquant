@@ -1,7 +1,11 @@
 """Binance OHLCV data fetching via ccxt."""
 
+import logging
+
 import ccxt
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 # CCXT single-request limit for Binance
 _MAX_PER_REQUEST = 1000
@@ -25,6 +29,7 @@ class BinanceFetcher:
         When *limit* exceeds the per-request cap (1000), multiple sequential
         requests are issued, each starting after the last returned timestamp.
         """
+        logger.info("Fetching OHLCV for %s (%s), limit=%d", symbol, timeframe, limit)
         all_rows: list[list] = []
         remaining = limit
 
@@ -38,6 +43,7 @@ class BinanceFetcher:
 
             all_rows.extend(raw)
             remaining -= len(raw)
+            logger.debug("Fetched %d candles, %d remaining", len(raw), max(remaining, 0))
 
             # If we got fewer than requested, there's no more data
             if len(raw) < batch_size:
@@ -56,4 +62,5 @@ class BinanceFetcher:
         )
         df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
         df = df.drop_duplicates(subset=["timestamp"]).reset_index(drop=True)
+        logger.info("Fetched %d candles for %s", len(df), symbol)
         return df

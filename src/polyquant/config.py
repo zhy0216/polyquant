@@ -1,7 +1,11 @@
 """Configuration management using pydantic-settings."""
 
+import logging
+
 from pydantic_settings import BaseSettings
 from pydantic import Field
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):

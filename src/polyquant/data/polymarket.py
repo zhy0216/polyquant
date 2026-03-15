@@ -1,9 +1,12 @@
 """Polymarket market discovery and price snapshot fetching."""
 
+import logging
 import re
 from datetime import datetime, timezone
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 
 GAMMA_API_URL = "https://gamma-api.polymarket.com"
@@ -30,7 +33,9 @@ class PolymarketFetcher:
     def get_crypto_markets(self) -> list[dict]:
         """Fetch and filter to crypto price threshold markets."""
         all_markets = self.fetch_active_markets()
-        return self._filter_crypto_markets(all_markets)
+        filtered = self._filter_crypto_markets(all_markets)
+        logger.info("Found %d crypto markets out of %d total", len(filtered), len(all_markets))
+        return filtered
 
     def _filter_crypto_markets(self, markets: list[dict]) -> list[dict]:
         """Filter markets to BTC/ETH price threshold markets."""
@@ -61,6 +66,7 @@ class PolymarketFetcher:
             data = resp.json()
             return float(data.get("mid", 0))
         except Exception:
+            logger.warning("Failed to fetch price for token %s", token_id)
             return None
 
     def _build_price_row(self, market: dict, prices: dict) -> dict:

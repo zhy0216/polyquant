@@ -1,8 +1,11 @@
 """Paper trading: simulated order execution without real money."""
 
+import logging
 from datetime import datetime, timezone
 
 from polyquant.strategy.signal import Signal
+
+logger = logging.getLogger(__name__)
 
 
 class PaperTrader:
@@ -45,6 +48,8 @@ class PaperTrader:
         }
         self.positions.append(position)
         self.available_capital -= size
+        logger.info("Opened %s position on %s: size=$%.2f, entry_price=%.4f",
+                     side, market_slug, size, entry_price)
 
         self.trade_log.append({
             "action": "open",
@@ -66,6 +71,8 @@ class PaperTrader:
                 pos["status"] = "resolved"
                 self.available_capital += payout
                 total_pnl += pos["pnl"]
+        logger.info("Resolved market %s: outcome_yes=%s, pnl=$%.2f",
+                     market_slug, outcome_yes, total_pnl)
         return total_pnl
 
     @property

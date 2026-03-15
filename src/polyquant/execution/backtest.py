@@ -1,10 +1,13 @@
 """Backtesting engine with rolling window training."""
 
+import logging
 from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score
+
+logger = logging.getLogger(__name__)
 
 from polyquant.model.features import compute_features
 from polyquant.model.predictor import Predictor
@@ -27,6 +30,8 @@ def run_model_backtest(
     step_size: int = 24,
 ) -> BacktestResult:
     """Run rolling-window model backtest on OHLCV data."""
+    logger.info("Starting backtest: threshold=%.2f, train_window=%d, horizon=%d, step=%d",
+                threshold, train_window, prediction_horizon, step_size)
     features_df = compute_features(ohlcv)
 
     labels = Predictor.create_threshold_labels(
@@ -38,8 +43,12 @@ def run_model_backtest(
 
     results = []
     start = train_window
+    iteration = 0
 
     while start + prediction_horizon < len(features_df):
+        iteration += 1
+        if iteration % 10 == 0:
+            logger.info("Backtest iteration %d (row %d/%d)", iteration, start, len(features_df))
         train_X = features_df[feature_cols].iloc[start - train_window:start]
         train_y = labels.iloc[start - train_window:start]
 
@@ -70,6 +79,7 @@ def run_model_backtest(
     pred_df = pd.DataFrame(results)
 
     if pred_df.empty:
+        logger.warning("Backtest produced no predictions")
         return BacktestResult(
             predictions=pred_df, accuracy=0.0, auc_roc=None, brier_score=1.0,
         )
@@ -81,6 +91,8 @@ def run_model_backtest(
     auc = None
     if pred_df["actual_label"].nunique() > 1:
         auc = roc_auc_score(pred_df["actual_label"], pred_df["predicted_prob"])
+
+    logger.info("Backtest complete: %d predictions, accuracy=%.2f%%", len(pred_df), accuracy * 100)
 
     return BacktestResult(
         predictions=pred_df,
