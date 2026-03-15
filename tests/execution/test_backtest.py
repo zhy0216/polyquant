@@ -112,6 +112,18 @@ def test_backtest_result_has_strategy_metrics(backtest_data):
     assert result.net_pnl <= result.gross_pnl
 
 
+def test_backtest_with_early_stopping(backtest_data):
+    result = run_model_backtest(
+        ohlcv=backtest_data,
+        threshold=100.0,
+        train_window=200,
+        prediction_horizon=24,
+        early_stopping=True,
+    )
+    assert isinstance(result, BacktestResult)
+    assert len(result.predictions) > 0
+
+
 def test_backtest_zero_fees_equal_gross(backtest_data):
     """With zero fees, net_pnl equals gross_pnl."""
     result = run_model_backtest(

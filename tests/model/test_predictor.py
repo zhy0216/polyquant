@@ -67,6 +67,24 @@ def test_create_labels_invalid_horizon():
         Predictor.create_threshold_labels(close, threshold=100.0, horizon=-1)
 
 
+def test_train_uses_early_stopping(training_data):
+    X, y = training_data
+    predictor = Predictor()
+    predictor.train(X, y, early_stopping=True)
+    probs = predictor.predict_proba(X.iloc[:5])
+    assert len(probs) == 5
+    assert all(0.0 <= p <= 1.0 for p in probs)
+    assert predictor.model.best_iteration_ is not None
+
+
+def test_train_default_no_early_stopping(training_data):
+    X, y = training_data
+    predictor = Predictor()
+    predictor.train(X, y)
+    probs = predictor.predict_proba(X.iloc[:5])
+    assert len(probs) == 5
+
+
 def test_create_labels_invalid_threshold():
     close = pd.Series([100.0, 101.0, 99.0])
     with pytest.raises(ValueError, match="threshold must be positive"):

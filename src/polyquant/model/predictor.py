@@ -26,11 +26,45 @@ class Predictor:
         }
         self.model: lgb.LGBMClassifier | None = None
 
-    def train(self, X: pd.DataFrame, y: pd.Series | np.ndarray) -> None:
-        """Train the model on features X and binary labels y."""
+    def train(
+        self, X: pd.DataFrame, y: pd.Series | np.ndarray, early_stopping: bool = False,
+    ) -> None:
+        """Train the model on features X and binary labels y.
+
+        Args:
+            X: Feature matrix.
+            y: Binary labels.
+            early_stopping: When True and len(X) > 100, hold out the last 20%
+                as a chronological validation set and stop training when
+                validation loss stops improving for 20 rounds.
+        """
         logger.info("Training model on %d samples with %d features", len(X), X.shape[1])
         self.model = lgb.LGBMClassifier(**self.params)
-        self.model.fit(X, y)
+
+        if early_stopping and len(X) > 100:
+            split = int(len(X) * 0.8)
+            X_train, X_val = X.iloc[:split], X.iloc[split:]
+            if isinstance(y, pd.Series):
+                y_train, y_val = y.iloc[:split], y.iloc[split:]
+            else:
+                y_train, y_val = y[:split], y[split:]
+
+            # Both splits must contain both classes for LightGBM's label encoder
+            y_train_arr = np.asarray(y_train)
+            y_val_arr = np.asarray(y_val)
+            if len(np.unique(y_train_arr)) < 2 or len(np.unique(y_val_arr)) < 2:
+                logger.info("Early stopping skipped: insufficient class diversity in split")
+                self.model.fit(X, y)
+            else:
+                logger.info("Early stopping enabled: train=%d, val=%d", len(X_train), len(X_val))
+                self.model.fit(
+                    X_train, y_train,
+                    eval_set=[(X_val, y_val)],
+                    callbacks=[lgb.early_stopping(stopping_rounds=20, verbose=False)],
+                )
+        else:
+            self.model.fit(X, y)
+
         logger.info("Training complete")
 
     def predict_proba(self, X: pd.DataFrame) -> np.ndarray:

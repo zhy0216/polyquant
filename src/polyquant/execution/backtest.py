@@ -34,6 +34,7 @@ def run_model_backtest(
     step_size: int = 24,
     fee_rate: float = 0.0,
     slippage_rate: float = 0.0,
+    early_stopping: bool = False,
 ) -> BacktestResult:
     """Run rolling-window model backtest on OHLCV data."""
     if train_window < 100:
@@ -82,7 +83,7 @@ def run_model_backtest(
             continue
 
         predictor = Predictor()
-        predictor.train(train_X[valid_mask], train_y[valid_mask].astype(int))
+        predictor.train(train_X[valid_mask], train_y[valid_mask].astype(int), early_stopping=early_stopping)
 
         pred_X = features_df[feature_cols].iloc[start:start + 1]
         if len(pred_X) != 1:
