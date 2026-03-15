@@ -32,9 +32,6 @@ class Settings(BaseSettings):
     train_window: int = Field(default=720, ge=100)
     ohlcv_limit: int = Field(default=8760, ge=200)
 
-    # Scheduling
-    data_fetch_interval_minutes: int = 15
-
     # Paths
     db_path: str = "data/polyquant.db"
 

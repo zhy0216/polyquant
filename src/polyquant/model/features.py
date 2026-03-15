@@ -67,7 +67,7 @@ def compute_features(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-_OHLCV_COLS = frozenset(("timestamp", "open", "high", "low", "close", "volume"))
+_OHLCV_COLS = frozenset(("timestamp", "open", "high", "low", "close", "volume", "symbol", "timeframe"))
 
 
 def get_feature_columns(df: pd.DataFrame) -> list[str]:
