@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
+import requests
 from polyquant.data.polymarket import PolymarketFetcher
 
 
@@ -56,3 +57,21 @@ def test_build_price_snapshot():
     assert row["yes_price"] == 0.55
     assert row["no_price"] == 0.45
     assert row["token_id"] == "0xyes1"
+
+
+def test_fetch_price_returns_none_on_request_exception():
+    fetcher = PolymarketFetcher()
+    fetcher.session = MagicMock()
+    fetcher.session.get.side_effect = requests.RequestException("timeout")
+    result = fetcher.fetch_price("0xtoken")
+    assert result is None
+
+
+def test_build_price_row_returns_none_on_missing_tokens():
+    fetcher = PolymarketFetcher.__new__(PolymarketFetcher)
+    market = {
+        "market_slug": "test-market",
+        "tokens": [{"token_id": "0x1", "outcome": "Maybe"}],
+    }
+    result = fetcher._build_price_row(market, {"0x1": 0.5})
+    assert result is None

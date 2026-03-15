@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
+import ccxt
 import pandas as pd
+import pytest
 from polyquant.data.binance import BinanceFetcher
 
 
@@ -71,3 +73,32 @@ def test_fetch_ohlcv_pagination_stops_early():
 
     assert len(df) == 800
     assert exchange.fetch_ohlcv.call_count == 1
+
+
+@patch("polyquant.data.binance.time.sleep")
+def test_fetch_ohlcv_retries_on_network_error(mock_sleep):
+    raw = [
+        [1704067200000, 100.0, 102.0, 99.0, 101.0, 1000.0],
+    ]
+    exchange = MagicMock()
+    exchange.timeout = 30000
+    exchange.fetch_ohlcv.side_effect = [
+        ccxt.NetworkError("connection reset"),
+        raw,
+    ]
+    fetcher = BinanceFetcher(exchange=exchange)
+    df = fetcher.fetch_ohlcv("BTC/USDT", "1h", limit=1)
+    assert len(df) == 1
+    assert exchange.fetch_ohlcv.call_count == 2
+    mock_sleep.assert_called_once()
+
+
+@patch("polyquant.data.binance.time.sleep")
+def test_fetch_ohlcv_raises_after_max_retries(mock_sleep):
+    exchange = MagicMock()
+    exchange.timeout = 30000
+    exchange.fetch_ohlcv.side_effect = ccxt.NetworkError("down")
+    fetcher = BinanceFetcher(exchange=exchange)
+    with pytest.raises(ccxt.NetworkError):
+        fetcher.fetch_ohlcv("BTC/USDT", "1h", limit=1)
+    assert exchange.fetch_ohlcv.call_count == 4  # 1 + 3 retries

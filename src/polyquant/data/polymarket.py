@@ -23,12 +23,17 @@ class PolymarketFetcher:
 
     def fetch_active_markets(self) -> list[dict]:
         """Fetch all active markets from Gamma API."""
-        resp = self.session.get(
-            f"{GAMMA_API_URL}/markets",
-            params={"active": "true", "closed": "false"},
-        )
-        resp.raise_for_status()
-        return resp.json()
+        try:
+            resp = self.session.get(
+                f"{GAMMA_API_URL}/markets",
+                params={"active": "true", "closed": "false"},
+                timeout=15,
+            )
+            resp.raise_for_status()
+            return resp.json()
+        except requests.RequestException as e:
+            logger.error("Failed to fetch active markets: %s", e)
+            raise
 
     def get_crypto_markets(self) -> list[dict]:
         """Fetch and filter to crypto price threshold markets."""
@@ -61,19 +66,23 @@ class PolymarketFetcher:
     def fetch_price(self, token_id: str) -> float | None:
         """Fetch current midpoint price for a token from CLOB API."""
         try:
-            resp = self.session.get(f"{CLOB_API_URL}/midpoint", params={"token_id": token_id})
+            resp = self.session.get(f"{CLOB_API_URL}/midpoint", params={"token_id": token_id}, timeout=10)
             resp.raise_for_status()
             data = resp.json()
             return float(data.get("mid", 0))
-        except Exception:
+        except (requests.RequestException, ValueError, KeyError):
             logger.warning("Failed to fetch price for token %s", token_id)
             return None
 
-    def _build_price_row(self, market: dict, prices: dict) -> dict:
+    def _build_price_row(self, market: dict, prices: dict) -> dict | None:
         """Build a price snapshot row from market info and fetched prices."""
         tokens = market["tokens"]
-        yes_token = next(t for t in tokens if t["outcome"] == "Yes")
-        no_token = next(t for t in tokens if t["outcome"] == "No")
+        try:
+            yes_token = next(t for t in tokens if t["outcome"] == "Yes")
+            no_token = next(t for t in tokens if t["outcome"] == "No")
+        except StopIteration:
+            logger.warning("Missing Yes/No tokens for market %s", market.get("market_slug", "unknown"))
+            return None
         return {
             "timestamp": datetime.now(timezone.utc),
             "market_slug": market["market_slug"],
@@ -93,5 +102,7 @@ class PolymarketFetcher:
                 if price is not None:
                     prices[tid] = price
             if prices:
-                rows.append(self._build_price_row(market, prices))
+                row = self._build_price_row(market, prices)
+                if row is not None:
+                    rows.append(row)
         return rows

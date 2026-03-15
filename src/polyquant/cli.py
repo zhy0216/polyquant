@@ -149,17 +149,25 @@ def main() -> None:
 
     setup_logging()
 
-    settings = Settings()
-    logger.info("Starting command: %s", args.command)
+    try:
+        settings = Settings()
+        logger.info("Starting command: %s", args.command)
 
-    if args.command == "collect":
-        collect_data(settings)
-    elif args.command == "backtest":
-        backtest(settings)
-    elif args.command == "paper":
-        paper_trade(settings)
+        if args.command == "collect":
+            collect_data(settings)
+        elif args.command == "backtest":
+            backtest(settings)
+        elif args.command == "paper":
+            paper_trade(settings)
 
-    logger.info("Command %s finished", args.command)
+        logger.info("Command %s finished", args.command)
+    except KeyboardInterrupt:
+        print("Interrupted.")
+        sys.exit(130)
+    except Exception:
+        logger.exception("Command failed")
+        print("Error: command failed. Check logs for details.")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
