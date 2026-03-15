@@ -63,6 +63,10 @@ def run_model_backtest(
         train_X = features_df[feature_cols].iloc[start - train_window:start]
         train_y = labels.iloc[start - train_window:start]
 
+        assert train_X.index[-1] < start, (
+            f"Look-ahead bias: train_X last index {train_X.index[-1]} >= prediction point {start}"
+        )
+
         valid_mask = ~train_y.isna()
         if valid_mask.sum() < 50:
             start += step_size
@@ -72,6 +76,9 @@ def run_model_backtest(
         predictor.train(train_X[valid_mask], train_y[valid_mask].astype(int))
 
         pred_X = features_df[feature_cols].iloc[start:start + 1]
+        assert len(pred_X) == 1, (
+            f"Expected exactly 1 prediction row, got {len(pred_X)} at start={start}"
+        )
         actual = labels.iloc[start]
 
         if pd.isna(actual):
