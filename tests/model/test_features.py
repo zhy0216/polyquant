@@ -54,3 +54,38 @@ def test_compute_features_too_few_rows():
     })
     with pytest.raises(ValueError, match="Need at least 100 rows"):
         compute_features(df)
+
+
+def test_compute_features_boundary_99_rows():
+    """99 rows should fail - just under the minimum."""
+    np.random.seed(42)
+    n = 99
+    prices = 100 + np.cumsum(np.random.randn(n) * 0.5)
+    df = pd.DataFrame({
+        "timestamp": pd.date_range("2025-01-01", periods=n, freq="h"),
+        "open": prices,
+        "high": prices + np.abs(np.random.randn(n)),
+        "low": prices - np.abs(np.random.randn(n)),
+        "close": prices + np.random.randn(n) * 0.3,
+        "volume": np.random.randint(100, 10000, n).astype(float),
+    })
+    with pytest.raises(ValueError, match="Need at least 100 rows"):
+        compute_features(df)
+
+
+def test_compute_features_boundary_100_rows():
+    """100 rows should be accepted - exactly at the minimum."""
+    np.random.seed(42)
+    n = 100
+    prices = 100 + np.cumsum(np.random.randn(n) * 0.5)
+    df = pd.DataFrame({
+        "timestamp": pd.date_range("2025-01-01", periods=n, freq="h"),
+        "open": prices,
+        "high": prices + np.abs(np.random.randn(n)),
+        "low": prices - np.abs(np.random.randn(n)),
+        "close": prices + np.random.randn(n) * 0.3,
+        "volume": np.random.randint(100, 10000, n).astype(float),
+    })
+    # Should not raise
+    result = compute_features(df)
+    assert isinstance(result, pd.DataFrame)

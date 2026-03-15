@@ -63,3 +63,31 @@ def test_backtest_invalid_prediction_horizon(backtest_data):
         run_model_backtest(ohlcv=backtest_data, threshold=100.0, prediction_horizon=0)
     with pytest.raises(ValueError, match="prediction_horizon must be positive"):
         run_model_backtest(ohlcv=backtest_data, threshold=100.0, prediction_horizon=-1)
+
+
+def test_backtest_insufficient_ohlcv_rows():
+    """ohlcv must have at least train_window + 100 rows."""
+    np.random.seed(42)
+    n = 250  # less than 200 + 100 = 300
+    prices = 100 + np.cumsum(np.random.randn(n) * 0.5)
+    small_df = pd.DataFrame({
+        "timestamp": pd.date_range("2025-01-01", periods=n, freq="h"),
+        "open": prices,
+        "high": prices + np.abs(np.random.randn(n)),
+        "low": prices - np.abs(np.random.randn(n)),
+        "close": prices + np.random.randn(n) * 0.3,
+        "volume": np.random.randint(100, 10000, n).astype(float),
+    })
+    with pytest.raises(ValueError, match="ohlcv must have at least"):
+        run_model_backtest(ohlcv=small_df, threshold=100.0, train_window=200)
+
+
+def test_backtest_boundary_train_window(backtest_data):
+    """train_window=100 (boundary) should be accepted."""
+    result = run_model_backtest(
+        ohlcv=backtest_data,
+        threshold=100.0,
+        train_window=100,
+        prediction_horizon=24,
+    )
+    assert isinstance(result, BacktestResult)
