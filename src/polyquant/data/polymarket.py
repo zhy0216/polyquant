@@ -73,23 +73,6 @@ class PolymarketFetcher:
             logger.warning("Failed to fetch price for token %s", token_id)
             return None
 
-    def _build_price_row(self, market: dict, prices: dict) -> dict | None:
-        """Build a price snapshot row from market info and fetched prices."""
-        tokens = market["tokens"]
-        try:
-            yes_token = next(t for t in tokens if t["outcome"] == "Yes")
-            no_token = next(t for t in tokens if t["outcome"] == "No")
-        except StopIteration:
-            logger.warning("Missing Yes/No tokens for market %s", market.get("market_slug", "unknown"))
-            return None
-        return {
-            "timestamp": datetime.now(timezone.utc),
-            "market_slug": market["market_slug"],
-            "token_id": yes_token["token_id"],
-            "yes_price": prices.get(yes_token["token_id"], 0.0),
-            "no_price": prices.get(no_token["token_id"], 0.0),
-        }
-
     def snapshot_prices(self, markets: list[dict]) -> list[dict]:
         """Fetch current prices for a list of markets and return snapshot rows.
 

@@ -7,10 +7,10 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score
 
-logger = logging.getLogger(__name__)
-
 from polyquant.model.features import compute_features, get_feature_columns
 from polyquant.model.predictor import Predictor
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -63,9 +63,12 @@ def run_model_backtest(
         train_X = features_df[feature_cols].iloc[start - train_window:start]
         train_y = labels.iloc[start - train_window:start]
 
-        assert train_X.index[-1] < start, (
-            f"Look-ahead bias: train_X last index {train_X.index[-1]} >= prediction point {start}"
-        )
+        train_end = start - train_window + len(train_X)  # actual end of training slice
+        if train_end > start:
+            raise RuntimeError(
+                f"Look-ahead bias: training data extends to row {train_end}, "
+                f"but prediction point is row {start}"
+            )
 
         valid_mask = ~train_y.isna()
         if valid_mask.sum() < 50:
@@ -76,9 +79,10 @@ def run_model_backtest(
         predictor.train(train_X[valid_mask], train_y[valid_mask].astype(int))
 
         pred_X = features_df[feature_cols].iloc[start:start + 1]
-        assert len(pred_X) == 1, (
-            f"Expected exactly 1 prediction row, got {len(pred_X)} at start={start}"
-        )
+        if len(pred_X) != 1:
+            raise RuntimeError(
+                f"Expected exactly 1 prediction row, got {len(pred_X)} at start={start}"
+            )
         actual = labels.iloc[start]
 
         if pd.isna(actual):

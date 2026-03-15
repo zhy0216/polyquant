@@ -43,8 +43,10 @@ def test_extract_threshold_from_question():
     assert fetcher._extract_threshold("No price here") is None
 
 
-def test_build_price_snapshot():
-    fetcher = PolymarketFetcher.__new__(PolymarketFetcher)
+def test_snapshot_prices_builds_correct_rows():
+    """snapshot_prices builds rows with correct yes/no prices and token_id."""
+    fetcher = PolymarketFetcher()
+
     market = {
         "market_slug": "will-btc-above-70000",
         "tokens": [
@@ -52,11 +54,17 @@ def test_build_price_snapshot():
             {"token_id": "0xno1", "outcome": "No"},
         ],
     }
-    prices = {"0xyes1": 0.55, "0xno1": 0.45}
-    row = fetcher._build_price_row(market, prices)
-    assert row["yes_price"] == 0.55
-    assert row["no_price"] == 0.45
-    assert row["token_id"] == "0xyes1"
+
+    def mock_fetch_price(token_id):
+        return {"0xyes1": 0.55, "0xno1": 0.45}.get(token_id)
+
+    with patch.object(fetcher, "fetch_price", side_effect=mock_fetch_price):
+        rows = fetcher.snapshot_prices([market])
+
+    assert len(rows) == 1
+    assert rows[0]["yes_price"] == 0.55
+    assert rows[0]["no_price"] == 0.45
+    assert rows[0]["token_id"] == "0xyes1"
 
 
 def test_fetch_price_returns_none_on_request_exception():
@@ -67,14 +75,16 @@ def test_fetch_price_returns_none_on_request_exception():
     assert result is None
 
 
-def test_build_price_row_returns_none_on_missing_tokens():
-    fetcher = PolymarketFetcher.__new__(PolymarketFetcher)
+def test_snapshot_prices_skips_missing_tokens():
+    """Markets without Yes/No tokens are skipped."""
+    fetcher = PolymarketFetcher()
     market = {
         "market_slug": "test-market",
         "tokens": [{"token_id": "0x1", "outcome": "Maybe"}],
     }
-    result = fetcher._build_price_row(market, {"0x1": 0.5})
-    assert result is None
+    with patch.object(fetcher, "fetch_price", return_value=0.5):
+        rows = fetcher.snapshot_prices([market])
+    assert len(rows) == 0
 
 
 def test_snapshot_prices_skips_partial_token_failures():
