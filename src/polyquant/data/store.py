@@ -112,7 +112,7 @@ class DataStore:
                 conn, params=(symbol, timeframe),
             )
         if not df.empty:
-            df["timestamp"] = pd.to_datetime(df["timestamp"])
+            df["timestamp"] = pd.to_datetime(df["timestamp"], format="mixed")
         logger.info("Loaded %d OHLCV rows for %s/%s", len(df), symbol, timeframe)
         return df
 
@@ -137,5 +137,5 @@ class DataStore:
                 conn, params=(market_slug,),
             )
         if not df.empty:
-            df["timestamp"] = pd.to_datetime(df["timestamp"])
+            df["timestamp"] = pd.to_datetime(df["timestamp"], format="mixed")
         return df

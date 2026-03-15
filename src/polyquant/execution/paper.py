@@ -35,6 +35,10 @@ class PaperTrader:
         side = "yes" if signal == Signal.BUY_YES else "no"
         entry_price = market_price if side == "yes" else (1 - market_price)
 
+        if entry_price <= 0:
+            logger.warning("Invalid entry price %.4f for %s, skipping trade", entry_price, market_slug)
+            return
+
         position = {
             "market_slug": market_slug,
             "token_id": token_id,
