@@ -43,9 +43,8 @@ def collect_data(settings: Settings) -> None:
             if snapshots:
                 store.save_polymarket_prices(pd.DataFrame(snapshots))
                 print(f"  Saved {len(snapshots)} price snapshots")
-    except Exception:
-        logger.exception("Data collection failed")
-        print("Error: data collection failed. Check logs for details.")
+    except Exception as e:
+        print(f"Error: data collection failed: {e}")
         raise
 
 
@@ -76,9 +75,8 @@ def backtest(settings: Settings) -> None:
             print(f"  Brier Score: {result.brier_score:.4f}")
             if result.auc_roc is not None:
                 print(f"  AUC-ROC: {result.auc_roc:.4f}")
-    except Exception:
-        logger.exception("Backtest failed")
-        print("Error: backtest failed. Check logs for details.")
+    except Exception as e:
+        print(f"Error: backtest failed: {e}")
         raise
 
 
@@ -149,9 +147,8 @@ def paper_trade(settings: Settings) -> None:
 
         print(f"\nOpen positions: {len([p for p in trader.positions if p['status'] == 'open'])}")
         print(f"Available capital: ${trader.available_capital:.2f}")
-    except Exception:
-        logger.exception("Paper trading failed")
-        print("Error: paper trading failed. Check logs for details.")
+    except Exception as e:
+        print(f"Error: paper trading failed: {e}")
         raise
 
 
