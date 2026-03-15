@@ -86,7 +86,7 @@ def paper_trade(settings: Settings) -> None:
         store = DataStore(settings.db_path)
         binance = BinanceFetcher()
         pm = PolymarketFetcher()
-        trader = PaperTrader(capital=1000.0)
+        trader = PaperTrader(capital=1000.0, max_exposure_pct=settings.max_exposure_pct)
 
         for pair in settings.trading_pairs:
             df = binance.fetch_ohlcv(pair, settings.ohlcv_timeframe, limit=settings.ohlcv_limit)
