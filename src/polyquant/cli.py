@@ -69,12 +69,24 @@ def backtest(settings: Settings) -> None:
                 threshold=threshold,
                 train_window=settings.train_window,
                 prediction_horizon=settings.prediction_horizon_hours,
+                fee_rate=settings.fee_rate,
+                slippage_rate=settings.slippage_rate,
+                early_stopping=True,
             )
             print(f"  Predictions: {len(result.predictions)}")
             print(f"  Accuracy: {result.accuracy:.2%}")
             print(f"  Brier Score: {result.brier_score:.4f}")
+            print(f"  Log Loss: {result.log_loss:.4f}")
             if result.auc_roc is not None:
                 print(f"  AUC-ROC: {result.auc_roc:.4f}")
+            print(f"  Gross P&L: ${result.gross_pnl:.2f}")
+            print(f"  Fees: ${result.total_fees:.2f}")
+            print(f"  Net P&L: ${result.net_pnl:.2f}")
+            if result.sharpe_ratio is not None:
+                print(f"  Sharpe Ratio: {result.sharpe_ratio:.2f}")
+            print(f"  Max Drawdown: {result.max_drawdown:.2%}")
+            if result.win_rate is not None:
+                print(f"  Win Rate: {result.win_rate:.2%}")
     except Exception as e:
         print(f"Error: backtest failed: {e}")
         raise

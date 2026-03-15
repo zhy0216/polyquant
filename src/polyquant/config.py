@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     kelly_fraction: float = Field(default=0.5, gt=0, le=1)
     max_position_pct: float = Field(default=0.05, gt=0, le=1)
     max_exposure_pct: float = Field(default=0.30, gt=0, le=1)
+    fee_rate: float = Field(default=0.02, ge=0, le=1)
+    slippage_rate: float = Field(default=0.01, ge=0, le=1)
 
     # Model parameters
     prediction_horizon_hours: int = Field(default=24, gt=0)
