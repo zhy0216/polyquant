@@ -19,6 +19,8 @@ def compute_features(df: pd.DataFrame) -> pd.DataFrame:
         DataFrame with feature columns, NaN warmup rows dropped.
     """
     out = df.copy()
+    if len(df) < 100:
+        raise ValueError(f"Need at least 100 rows for feature computation, got {len(df)}")
     logger.info("Computing features from %d input rows", len(df))
 
     # Trend

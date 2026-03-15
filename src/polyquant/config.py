@@ -21,16 +21,16 @@ class Settings(BaseSettings):
     trading_pairs: list[str] = Field(default=["BTC/USDT", "ETH/USDT"])
 
     # Strategy parameters
-    signal_threshold: float = 0.10
-    kelly_fraction: float = 0.5
-    max_position_pct: float = 0.05
-    max_exposure_pct: float = 0.30
+    signal_threshold: float = Field(default=0.10, gt=0, le=1)
+    kelly_fraction: float = Field(default=0.5, gt=0, le=1)
+    max_position_pct: float = Field(default=0.05, gt=0, le=1)
+    max_exposure_pct: float = Field(default=0.30, gt=0, le=1)
 
     # Model parameters
-    prediction_horizon_hours: int = 24
+    prediction_horizon_hours: int = Field(default=24, gt=0)
     ohlcv_timeframe: str = "1h"
-    train_window: int = 720
-    ohlcv_limit: int = 8760
+    train_window: int = Field(default=720, ge=100)
+    ohlcv_limit: int = Field(default=8760, ge=200)
 
     # Scheduling
     data_fetch_interval_minutes: int = 15

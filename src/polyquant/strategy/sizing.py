@@ -12,6 +12,11 @@ def kelly_size(
     kelly_fraction: float = 0.5,
     max_position_pct: float = 1.0,
 ) -> float:
+    if prob < 0 or prob > 1:
+        raise ValueError("prob must be in [0, 1]")
+    if capital <= 0:
+        raise ValueError("capital must be positive")
+
     if market_price <= 0 or market_price >= 1:
         return 0.0
 

@@ -44,3 +44,22 @@ def test_backtest_predictions_have_expected_fields(backtest_data):
     assert "predicted_prob" in pred.columns
     assert "actual_label" in pred.columns
     assert "timestamp" in pred.columns
+
+
+def test_backtest_invalid_train_window(backtest_data):
+    with pytest.raises(ValueError, match="train_window must be >= 100"):
+        run_model_backtest(ohlcv=backtest_data, threshold=100.0, train_window=50)
+
+
+def test_backtest_invalid_step_size(backtest_data):
+    with pytest.raises(ValueError, match="step_size must be positive"):
+        run_model_backtest(ohlcv=backtest_data, threshold=100.0, step_size=0)
+    with pytest.raises(ValueError, match="step_size must be positive"):
+        run_model_backtest(ohlcv=backtest_data, threshold=100.0, step_size=-1)
+
+
+def test_backtest_invalid_prediction_horizon(backtest_data):
+    with pytest.raises(ValueError, match="prediction_horizon must be positive"):
+        run_model_backtest(ohlcv=backtest_data, threshold=100.0, prediction_horizon=0)
+    with pytest.raises(ValueError, match="prediction_horizon must be positive"):
+        run_model_backtest(ohlcv=backtest_data, threshold=100.0, prediction_horizon=-1)

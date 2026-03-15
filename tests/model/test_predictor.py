@@ -57,3 +57,19 @@ def test_create_labels():
     labels = Predictor.create_threshold_labels(close, threshold, horizon=1)
     assert list(labels[:4]) == [1, 0, 1, 0]
     assert pd.isna(labels.iloc[4])
+
+
+def test_create_labels_invalid_horizon():
+    close = pd.Series([100.0, 101.0, 99.0])
+    with pytest.raises(ValueError, match="horizon must be positive"):
+        Predictor.create_threshold_labels(close, threshold=100.0, horizon=0)
+    with pytest.raises(ValueError, match="horizon must be positive"):
+        Predictor.create_threshold_labels(close, threshold=100.0, horizon=-1)
+
+
+def test_create_labels_invalid_threshold():
+    close = pd.Series([100.0, 101.0, 99.0])
+    with pytest.raises(ValueError, match="threshold must be positive"):
+        Predictor.create_threshold_labels(close, threshold=0, horizon=1)
+    with pytest.raises(ValueError, match="threshold must be positive"):
+        Predictor.create_threshold_labels(close, threshold=-10, horizon=1)

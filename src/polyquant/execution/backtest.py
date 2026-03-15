@@ -30,6 +30,18 @@ def run_model_backtest(
     step_size: int = 24,
 ) -> BacktestResult:
     """Run rolling-window model backtest on OHLCV data."""
+    if train_window < 100:
+        raise ValueError("train_window must be >= 100")
+    if step_size <= 0:
+        raise ValueError("step_size must be positive")
+    if prediction_horizon <= 0:
+        raise ValueError("prediction_horizon must be positive")
+    min_rows = train_window + 100
+    if len(ohlcv) < min_rows:
+        raise ValueError(
+            f"ohlcv must have at least {min_rows} rows "
+            f"(train_window={train_window} + 100 warmup), got {len(ohlcv)}"
+        )
     logger.info("Starting backtest: threshold=%.2f, train_window=%d, horizon=%d, step=%d",
                 threshold, train_window, prediction_horizon, step_size)
     features_df = compute_features(ohlcv)

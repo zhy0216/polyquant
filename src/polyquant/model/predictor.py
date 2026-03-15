@@ -66,6 +66,10 @@ class Predictor:
         close: pd.Series, threshold: float, horizon: int = 24,
     ) -> pd.Series:
         """Create binary labels: 1 if future close > threshold, 0 otherwise."""
+        if horizon <= 0:
+            raise ValueError("horizon must be positive")
+        if threshold <= 0:
+            raise ValueError("threshold must be positive")
         future_close = close.shift(-horizon)
         labels = (future_close > threshold).astype(float)
         labels[future_close.isna()] = np.nan
