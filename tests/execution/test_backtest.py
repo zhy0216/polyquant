@@ -91,3 +91,35 @@ def test_backtest_boundary_train_window(backtest_data):
         prediction_horizon=24,
     )
     assert isinstance(result, BacktestResult)
+
+
+def test_backtest_result_has_strategy_metrics(backtest_data):
+    """BacktestResult should include log_loss and strategy P&L with costs."""
+    result = run_model_backtest(
+        ohlcv=backtest_data,
+        threshold=100.0,
+        train_window=200,
+        prediction_horizon=24,
+        fee_rate=0.02,
+        slippage_rate=0.01,
+    )
+    assert isinstance(result, BacktestResult)
+    assert hasattr(result, "log_loss")
+    assert hasattr(result, "net_pnl")
+    assert hasattr(result, "gross_pnl")
+    assert hasattr(result, "total_fees")
+    assert result.total_fees >= 0
+    assert result.net_pnl <= result.gross_pnl
+
+
+def test_backtest_zero_fees_equal_gross(backtest_data):
+    """With zero fees, net_pnl equals gross_pnl."""
+    result = run_model_backtest(
+        ohlcv=backtest_data,
+        threshold=100.0,
+        train_window=200,
+        prediction_horizon=24,
+        fee_rate=0.0,
+        slippage_rate=0.0,
+    )
+    assert abs(result.net_pnl - result.gross_pnl) < 1e-6

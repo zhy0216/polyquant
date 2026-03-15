@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import log_loss as sklearn_log_loss, roc_auc_score
 
 from polyquant.model.features import compute_features, get_feature_columns
 from polyquant.model.predictor import Predictor
@@ -20,6 +20,10 @@ class BacktestResult:
     accuracy: float
     auc_roc: float | None
     brier_score: float
+    log_loss: float
+    gross_pnl: float
+    net_pnl: float
+    total_fees: float
 
 
 def run_model_backtest(
@@ -28,6 +32,8 @@ def run_model_backtest(
     train_window: int = 720,
     prediction_horizon: int = 24,
     step_size: int = 24,
+    fee_rate: float = 0.0,
+    slippage_rate: float = 0.0,
 ) -> BacktestResult:
     """Run rolling-window model backtest on OHLCV data."""
     if train_window < 100:
@@ -104,6 +110,7 @@ def run_model_backtest(
         logger.warning("Backtest produced no predictions")
         return BacktestResult(
             predictions=pred_df, accuracy=0.0, auc_roc=None, brier_score=1.0,
+            log_loss=10.0, gross_pnl=0.0, net_pnl=0.0, total_fees=0.0,
         )
 
     predicted_labels = (pred_df["predicted_prob"] >= 0.5).astype(int)
@@ -114,6 +121,44 @@ def run_model_backtest(
     if pred_df["actual_label"].nunique() > 1:
         auc = roc_auc_score(pred_df["actual_label"], pred_df["predicted_prob"])
 
+    # Compute log_loss
+    if pred_df["actual_label"].nunique() > 1:
+        ll = float(sklearn_log_loss(pred_df["actual_label"], pred_df["predicted_prob"]))
+    else:
+        ll = 10.0
+
+    # Simulate strategy P&L with costs
+    bet_size = 100.0
+    cost_per_trade = bet_size * (fee_rate + slippage_rate)
+    gross_pnl = 0.0
+    total_fees = 0.0
+
+    for _, row in pred_df.iterrows():
+        prob = row["predicted_prob"]
+        actual = int(row["actual_label"])
+
+        if prob >= 0.6:
+            # Bet YES at entry_price = prob
+            entry_price = prob
+            if actual == 1:
+                payout = bet_size / entry_price - bet_size
+            else:
+                payout = -bet_size
+            gross_pnl += payout
+            total_fees += cost_per_trade
+        elif prob <= 0.4:
+            # Bet NO at entry_price = prob (NO price = 1 - prob)
+            entry_price = prob
+            if actual == 0:
+                payout = bet_size / (1 - entry_price) - bet_size
+            else:
+                payout = -bet_size
+            gross_pnl += payout
+            total_fees += cost_per_trade
+        # else: no trade
+
+    net_pnl = gross_pnl - total_fees
+
     logger.info("Backtest complete: %d predictions, accuracy=%.2f%%", len(pred_df), accuracy * 100)
 
     return BacktestResult(
@@ -121,4 +166,8 @@ def run_model_backtest(
         accuracy=float(accuracy),
         auc_roc=auc,
         brier_score=float(brier),
+        log_loss=ll,
+        gross_pnl=float(gross_pnl),
+        net_pnl=float(net_pnl),
+        total_fees=float(total_fees),
     )
