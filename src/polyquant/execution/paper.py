@@ -11,9 +11,12 @@ logger = logging.getLogger(__name__)
 class PaperTrader:
     """Simulates trading by tracking virtual positions and P&L."""
 
-    def __init__(self, capital: float) -> None:
+    def __init__(self, capital: float, max_exposure_pct: float = 1.0) -> None:
+        if not 0.0 < max_exposure_pct <= 1.0:
+            raise ValueError(f"max_exposure_pct must be in (0, 1.0], got {max_exposure_pct}")
         self.initial_capital = capital
         self.available_capital = capital
+        self.max_exposure_pct = max_exposure_pct
         self.positions: list[dict] = []
         self.trade_log: list[dict] = []
 
@@ -27,6 +30,15 @@ class PaperTrader:
     ) -> None:
         if signal == Signal.NONE:
             return
+
+        max_exposure = self.initial_capital * self.max_exposure_pct
+        remaining_exposure = max_exposure - self.open_exposure
+        if remaining_exposure <= 0:
+            logger.warning("Max exposure (%.0f%%) reached, rejecting trade on %s",
+                           self.max_exposure_pct * 100, market_slug)
+            return
+        size = min(size, remaining_exposure)
+
         if size > self.available_capital:
             size = self.available_capital
         if size <= 0:
