@@ -65,3 +65,11 @@ def compute_features(df: pd.DataFrame) -> pd.DataFrame:
     logger.info("Dropped %d warmup rows, %d rows remaining", rows_before - len(out), len(out))
 
     return out
+
+
+_OHLCV_COLS = frozenset(("timestamp", "open", "high", "low", "close", "volume"))
+
+
+def get_feature_columns(df: pd.DataFrame) -> list[str]:
+    """Return feature column names (excludes raw OHLCV columns)."""
+    return [c for c in df.columns if c not in _OHLCV_COLS]

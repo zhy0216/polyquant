@@ -50,3 +50,17 @@ def test_only_specified_exceptions_trigger_retry(mock_sleep):
     with pytest.raises(TypeError, match="wrong type"):
         raise_type_error()
     mock_sleep.assert_not_called()
+
+
+@patch("polyquant.utils.time.sleep")
+def test_exponential_delay(mock_sleep):
+    @retry_with_backoff(max_retries=3, base_delay=1.0)
+    def always_fail():
+        raise RuntimeError("fail")
+
+    with pytest.raises(RuntimeError):
+        always_fail()
+    # Delays should be 1*2^0=1, 1*2^1=2, 1*2^2=4
+    assert mock_sleep.call_count == 3
+    calls = [c.args[0] for c in mock_sleep.call_args_list]
+    assert calls == [1.0, 2.0, 4.0]

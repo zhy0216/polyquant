@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 
 import requests
 
+from polyquant.utils import retry_with_backoff
+
 logger = logging.getLogger(__name__)
 
 
@@ -21,19 +23,16 @@ class PolymarketFetcher:
     def __init__(self) -> None:
         self.session = requests.Session()
 
+    @retry_with_backoff(max_retries=3, base_delay=2.0, exceptions=(requests.RequestException,))
     def fetch_active_markets(self) -> list[dict]:
         """Fetch all active markets from Gamma API."""
-        try:
-            resp = self.session.get(
-                f"{GAMMA_API_URL}/markets",
-                params={"active": "true", "closed": "false"},
-                timeout=15,
-            )
-            resp.raise_for_status()
-            return resp.json()
-        except requests.RequestException as e:
-            logger.error("Failed to fetch active markets: %s", e)
-            raise
+        resp = self.session.get(
+            f"{GAMMA_API_URL}/markets",
+            params={"active": "true", "closed": "false"},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        return resp.json()
 
     def get_crypto_markets(self) -> list[dict]:
         """Fetch and filter to crypto price threshold markets."""
@@ -92,17 +91,36 @@ class PolymarketFetcher:
         }
 
     def snapshot_prices(self, markets: list[dict]) -> list[dict]:
-        """Fetch current prices for a list of markets and return snapshot rows."""
+        """Fetch current prices for a list of markets and return snapshot rows.
+
+        Only includes a market when BOTH YES and NO token prices are available.
+        """
         rows = []
         for market in markets:
-            prices = {}
-            for token in market["tokens"]:
-                tid = token["token_id"]
-                price = self.fetch_price(tid)
-                if price is not None:
-                    prices[tid] = price
-            if prices:
-                row = self._build_price_row(market, prices)
-                if row is not None:
-                    rows.append(row)
+            tokens = market.get("tokens", [])
+            try:
+                yes_token = next(t for t in tokens if t["outcome"] == "Yes")
+                no_token = next(t for t in tokens if t["outcome"] == "No")
+            except StopIteration:
+                logger.warning("Missing Yes/No tokens for market %s", market.get("market_slug", "unknown"))
+                continue
+
+            yes_price = self.fetch_price(yes_token["token_id"])
+            no_price = self.fetch_price(no_token["token_id"])
+
+            if yes_price is None or no_price is None:
+                logger.warning(
+                    "Partial price failure for market %s (yes=%s, no=%s), skipping",
+                    market.get("market_slug", "unknown"), yes_price, no_price,
+                )
+                continue
+
+            row = {
+                "timestamp": datetime.now(timezone.utc),
+                "market_slug": market["market_slug"],
+                "token_id": yes_token["token_id"],
+                "yes_price": yes_price,
+                "no_price": no_price,
+            }
+            rows.append(row)
         return rows

@@ -75,3 +75,41 @@ def test_build_price_row_returns_none_on_missing_tokens():
     }
     result = fetcher._build_price_row(market, {"0x1": 0.5})
     assert result is None
+
+
+def test_snapshot_prices_skips_partial_token_failures():
+    """If YES price succeeds but NO fails (or vice versa), skip that market."""
+    fetcher = PolymarketFetcher()
+    fetcher.session = MagicMock()
+
+    market_ok = {
+        "market_slug": "btc-above-70k",
+        "tokens": [
+            {"token_id": "0xyes_ok", "outcome": "Yes"},
+            {"token_id": "0xno_ok", "outcome": "No"},
+        ],
+    }
+    market_partial = {
+        "market_slug": "btc-above-80k",
+        "tokens": [
+            {"token_id": "0xyes_partial", "outcome": "Yes"},
+            {"token_id": "0xno_partial", "outcome": "No"},
+        ],
+    }
+
+    def mock_fetch_price(token_id):
+        prices = {
+            "0xyes_ok": 0.55,
+            "0xno_ok": 0.45,
+            "0xyes_partial": 0.60,
+            "0xno_partial": None,  # failure
+        }
+        return prices.get(token_id)
+
+    with patch.object(fetcher, "fetch_price", side_effect=mock_fetch_price):
+        rows = fetcher.snapshot_prices([market_ok, market_partial])
+
+    assert len(rows) == 1
+    assert rows[0]["market_slug"] == "btc-above-70k"
+    assert rows[0]["yes_price"] == 0.55
+    assert rows[0]["no_price"] == 0.45

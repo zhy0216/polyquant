@@ -16,6 +16,7 @@ class DataStore:
         self.db_path = db_path
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
         self._init_tables()
+        self._migrate_tables()
 
     def _get_conn(self) -> sqlite3.Connection:
         return sqlite3.connect(self.db_path)
@@ -43,7 +44,7 @@ class DataStore:
                     token_id TEXT NOT NULL,
                     yes_price REAL NOT NULL,
                     no_price REAL NOT NULL,
-                    PRIMARY KEY (timestamp, market_slug)
+                    PRIMARY KEY (timestamp, market_slug, token_id)
                 )
             """)
             conn.execute("""
@@ -61,6 +62,34 @@ class DataStore:
                     pnl REAL
                 )
             """)
+
+    def _migrate_tables(self) -> None:
+        """Migrate existing tables to updated schemas if needed."""
+        with self._get_conn() as conn:
+            # Check if polymarket_prices needs migration
+            info = conn.execute("PRAGMA table_info(polymarket_prices)").fetchall()
+            if not info:
+                return  # Table doesn't exist yet
+            # Check primary key columns
+            pk_cols = [row[1] for row in info if row[5] > 0]  # col[5] is pk flag
+            if "token_id" not in pk_cols:
+                logger.info("Migrating polymarket_prices table to include token_id in primary key")
+                conn.execute("ALTER TABLE polymarket_prices RENAME TO _polymarket_prices_old")
+                conn.execute("""
+                    CREATE TABLE polymarket_prices (
+                        timestamp TEXT NOT NULL,
+                        market_slug TEXT NOT NULL,
+                        token_id TEXT NOT NULL,
+                        yes_price REAL NOT NULL,
+                        no_price REAL NOT NULL,
+                        PRIMARY KEY (timestamp, market_slug, token_id)
+                    )
+                """)
+                conn.execute("""
+                    INSERT INTO polymarket_prices
+                    SELECT * FROM _polymarket_prices_old
+                """)
+                conn.execute("DROP TABLE _polymarket_prices_old")
 
     def save_ohlcv(self, symbol: str, timeframe: str, df: pd.DataFrame) -> None:
         """Save OHLCV data, upserting on (symbol, timeframe, timestamp)."""

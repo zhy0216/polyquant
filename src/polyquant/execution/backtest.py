@@ -9,7 +9,7 @@ from sklearn.metrics import roc_auc_score
 
 logger = logging.getLogger(__name__)
 
-from polyquant.model.features import compute_features
+from polyquant.model.features import compute_features, get_feature_columns
 from polyquant.model.predictor import Predictor
 
 
@@ -50,8 +50,7 @@ def run_model_backtest(
         features_df["close"], threshold, horizon=prediction_horizon,
     )
 
-    feature_cols = [c for c in features_df.columns
-                    if c not in ("timestamp", "open", "high", "low", "close", "volume")]
+    feature_cols = get_feature_columns(features_df)
 
     results = []
     start = train_window
