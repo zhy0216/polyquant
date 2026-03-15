@@ -135,3 +135,21 @@ def test_backtest_zero_fees_equal_gross(backtest_data):
         slippage_rate=0.0,
     )
     assert abs(result.net_pnl - result.gross_pnl) < 1e-6
+
+
+def test_backtest_has_portfolio_metrics(backtest_data):
+    result = run_model_backtest(
+        ohlcv=backtest_data,
+        threshold=100.0,
+        train_window=200,
+        prediction_horizon=24,
+        fee_rate=0.01,
+    )
+    assert hasattr(result, "sharpe_ratio")
+    assert hasattr(result, "max_drawdown")
+    assert hasattr(result, "win_rate")
+    assert isinstance(result.sharpe_ratio, (float, type(None)))
+    assert isinstance(result.max_drawdown, float)
+    assert 0.0 <= result.max_drawdown <= 1.0
+    if result.win_rate is not None:
+        assert 0.0 <= result.win_rate <= 1.0

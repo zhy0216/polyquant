@@ -24,6 +24,9 @@ class BacktestResult:
     gross_pnl: float
     net_pnl: float
     total_fees: float
+    sharpe_ratio: float | None
+    max_drawdown: float
+    win_rate: float | None
 
 
 def run_model_backtest(
@@ -112,6 +115,7 @@ def run_model_backtest(
         return BacktestResult(
             predictions=pred_df, accuracy=0.0, auc_roc=None, brier_score=1.0,
             log_loss=10.0, gross_pnl=0.0, net_pnl=0.0, total_fees=0.0,
+            sharpe_ratio=None, max_drawdown=0.0, win_rate=None,
         )
 
     predicted_labels = (pred_df["predicted_prob"] >= 0.5).astype(int)
@@ -133,6 +137,7 @@ def run_model_backtest(
     cost_per_trade = bet_size * (fee_rate + slippage_rate)
     gross_pnl = 0.0
     total_fees = 0.0
+    trade_returns = []
 
     for _, row in pred_df.iterrows():
         prob = row["predicted_prob"]
@@ -147,6 +152,7 @@ def run_model_backtest(
                 payout = -bet_size
             gross_pnl += payout
             total_fees += cost_per_trade
+            trade_returns.append(payout - cost_per_trade)
         elif prob <= 0.4:
             # Bet NO at entry_price = prob (NO price = 1 - prob)
             entry_price = prob
@@ -156,9 +162,37 @@ def run_model_backtest(
                 payout = -bet_size
             gross_pnl += payout
             total_fees += cost_per_trade
+            trade_returns.append(payout - cost_per_trade)
         # else: no trade
 
     net_pnl = gross_pnl - total_fees
+
+    # Compute portfolio-level metrics
+    n_trades = len(trade_returns)
+    if n_trades == 0:
+        sharpe_ratio = None
+        max_drawdown = 0.0
+        win_rate = None
+    else:
+        win_rate = float(sum(1 for r in trade_returns if r > 0) / n_trades)
+
+        if n_trades >= 2:
+            returns_arr = np.array(trade_returns)
+            std = float(np.std(returns_arr, ddof=1))
+            if std > 0:
+                sharpe_ratio = float(np.mean(returns_arr) / std * np.sqrt(252))
+            else:
+                sharpe_ratio = None
+        else:
+            sharpe_ratio = None
+
+        # Max drawdown from cumulative equity curve
+        equity = np.array([bet_size] + [bet_size + sum(trade_returns[:i+1]) for i in range(n_trades)])
+        peak = np.maximum.accumulate(equity)
+        # Avoid division by zero if peak is 0
+        with np.errstate(divide='ignore', invalid='ignore'):
+            drawdowns = np.where(peak > 0, (peak - equity) / peak, 0.0)
+        max_drawdown = min(float(np.max(drawdowns)), 1.0)
 
     logger.info("Backtest complete: %d predictions, accuracy=%.2f%%", len(pred_df), accuracy * 100)
 
@@ -171,4 +205,7 @@ def run_model_backtest(
         gross_pnl=float(gross_pnl),
         net_pnl=float(net_pnl),
         total_fees=float(total_fees),
+        sharpe_ratio=sharpe_ratio,
+        max_drawdown=max_drawdown,
+        win_rate=win_rate,
     )
