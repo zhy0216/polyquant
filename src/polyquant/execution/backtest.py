@@ -22,7 +22,7 @@ class BacktestResult:
 def run_model_backtest(
     ohlcv: pd.DataFrame,
     threshold: float,
-    train_window: int = 200,
+    train_window: int = 720,
     prediction_horizon: int = 24,
     step_size: int = 24,
 ) -> BacktestResult:

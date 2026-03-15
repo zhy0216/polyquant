@@ -13,6 +13,8 @@ def test_default_settings():
     assert settings.prediction_horizon_hours == 24
     assert settings.data_fetch_interval_minutes == 15
     assert settings.ohlcv_timeframe == "1h"
+    assert settings.train_window == 720
+    assert settings.ohlcv_limit == 8760
 
 
 def test_settings_override():

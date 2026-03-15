@@ -24,7 +24,7 @@ def collect_data(settings: Settings) -> None:
 
     print("Fetching Binance OHLCV data...")
     for pair in settings.trading_pairs:
-        df = binance.fetch_ohlcv(pair, settings.ohlcv_timeframe, limit=1000)
+        df = binance.fetch_ohlcv(pair, settings.ohlcv_timeframe, limit=settings.ohlcv_limit)
         store.save_ohlcv(pair, settings.ohlcv_timeframe, df)
         print(f"  {pair}: {len(df)} candles saved")
 
@@ -58,7 +58,7 @@ def backtest(settings: Settings) -> None:
         result = run_model_backtest(
             ohlcv=ohlcv,
             threshold=threshold,
-            train_window=200,
+            train_window=settings.train_window,
             prediction_horizon=settings.prediction_horizon_hours,
         )
         print(f"  Predictions: {len(result.predictions)}")
@@ -76,7 +76,7 @@ def paper_trade(settings: Settings) -> None:
     trader = PaperTrader(capital=1000.0)
 
     for pair in settings.trading_pairs:
-        df = binance.fetch_ohlcv(pair, settings.ohlcv_timeframe, limit=500)
+        df = binance.fetch_ohlcv(pair, settings.ohlcv_timeframe, limit=settings.ohlcv_limit)
         store.save_ohlcv(pair, settings.ohlcv_timeframe, df)
 
     markets = pm.get_crypto_markets()
@@ -93,7 +93,7 @@ def paper_trade(settings: Settings) -> None:
         q_lower = question.lower()
         pair = "BTC/USDT" if "btc" in q_lower or "bitcoin" in q_lower else "ETH/USDT"
         ohlcv = store.load_ohlcv(pair, settings.ohlcv_timeframe)
-        if len(ohlcv) < 200:
+        if len(ohlcv) < settings.train_window:
             continue
 
         features = compute_features(ohlcv)

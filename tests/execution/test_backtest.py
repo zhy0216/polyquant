@@ -6,9 +6,9 @@ from polyquant.execution.backtest import run_model_backtest, BacktestResult
 
 @pytest.fixture
 def backtest_data():
-    """Synthetic OHLCV data for backtesting (500 hourly rows)."""
+    """Synthetic OHLCV data for backtesting (1200 hourly rows)."""
     np.random.seed(42)
-    n = 500
+    n = 1200
     prices = 100 + np.cumsum(np.random.randn(n) * 0.5)
     return pd.DataFrame({
         "timestamp": pd.date_range("2025-01-01", periods=n, freq="h"),

@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     # Model parameters
     prediction_horizon_hours: int = 24
     ohlcv_timeframe: str = "1h"
+    train_window: int = 720
+    ohlcv_limit: int = 8760
 
     # Scheduling
     data_fetch_interval_minutes: int = 15
